@@ -95,6 +95,16 @@ public class SearchRepository {
       Stopwatch timer = new Stopwatch("FtsQuery");
 
       String cleanQuery = sanitizeQuery(query);
+
+      // If the search is for a single character and it was stripped by `sanitizeQuery` then abort
+      // the search for an empty string to avoid SQLite error.
+      if (cleanQuery.length() == 0)
+      {
+        Log.d(TAG, "Aborting empty search query.");
+        timer.stop(TAG);
+        return;
+      }
+
       timer.split("clean");
 
       Pair<CursorList<Contact>, List<String>> contacts = queryContacts(cleanQuery);
@@ -119,10 +129,11 @@ public class SearchRepository {
     }
 
     executor.execute(() -> {
-      long startTime = System.currentTimeMillis();
-      CursorList<MessageResult> messages = queryMessages(sanitizeQuery(query), threadId);
-      Log.d(TAG, "[ConversationQuery] " + (System.currentTimeMillis() - startTime) + " ms");
-
+      // If the sanitized search query is empty then abort the search to prevent SQLite errors.
+      String cleanQuery = sanitizeQuery(query).trim();
+      if (cleanQuery.isEmpty()) { return; }
+            
+      CursorList<MessageResult> messages = queryMessages(cleanQuery, threadId);
       callback.onResult(messages);
     });
   }
@@ -215,7 +226,7 @@ public class SearchRepository {
         out.append(' ');
       }
     }
-
+    
     return out.toString();
   }
 

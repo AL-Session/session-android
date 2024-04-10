@@ -46,7 +46,6 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.loader.app.LoaderManager
 import androidx.loader.content.Loader
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -57,8 +56,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.consumeAsFlow
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,6 +103,7 @@ import org.thoughtcrime.securesms.ApplicationContext
 import org.thoughtcrime.securesms.PassphraseRequiredActionBarActivity
 import org.thoughtcrime.securesms.attachments.ScreenshotObserver
 import org.thoughtcrime.securesms.audio.AudioRecorder
+import org.thoughtcrime.securesms.components.emoji.RecentEmojiPageModel
 import org.thoughtcrime.securesms.contacts.SelectContactsActivity.Companion.selectedContactsKey
 import org.thoughtcrime.securesms.conversation.ConversationActionBarDelegate
 import org.thoughtcrime.securesms.conversation.disappearingmessages.DisappearingMessagesActivity
@@ -180,8 +178,6 @@ import org.thoughtcrime.securesms.util.push
 import org.thoughtcrime.securesms.util.show
 import org.thoughtcrime.securesms.util.toPx
 import java.lang.ref.WeakReference
-import java.time.Instant
-import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.atomic.AtomicBoolean
@@ -192,8 +188,6 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 private const val TAG = "ConversationActivityV2"
 
@@ -395,7 +389,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         messageToScrollAuthor.set(intent.getParcelableExtra(SCROLL_MESSAGE_AUTHOR))
         val recipient = viewModel.recipient
         val openGroup = recipient.let { viewModel.openGroup }
-        if (recipient == null || (recipient.isOpenGroupRecipient && openGroup == null)) {
+        if (recipient == null || (recipient.isCommunityRecipient && openGroup == null)) {
             Toast.makeText(this, "This thread has been deleted.", Toast.LENGTH_LONG).show()
             return finish()
         }
@@ -976,11 +970,11 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
             view.glide = glide
             view.onCandidateSelected = { handleMentionSelected(it) }
             additionalContentContainer.addView(view)
-            val candidates = MentionsManager.getMentionCandidates(query, viewModel.threadId, recipient.isOpenGroupRecipient)
+            val candidates = MentionsManager.getMentionCandidates(query, viewModel.threadId, recipient.isCommunityRecipient)
             this.mentionCandidatesView = view
             view.show(candidates, viewModel.threadId)
         } else {
-            val candidates = MentionsManager.getMentionCandidates(query, viewModel.threadId, recipient.isOpenGroupRecipient)
+            val candidates = MentionsManager.getMentionCandidates(query, viewModel.threadId, recipient.isCommunityRecipient)
             this.mentionCandidatesView!!.setMentionCandidates(candidates)
         }
         isShowingMentionCandidatesView = true
@@ -1118,6 +1112,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         val blindedRecipient = viewModel.blindedRecipient
         val binding = binding ?: return
         val openGroup = viewModel.openGroup
+
         val (textResource, insertParam) = when {
             recipient.isLocalNumber -> R.string.activity_conversation_empty_state_note_to_self to null
             openGroup != null && !openGroup.canWrite -> R.string.activity_conversation_empty_state_read_only to recipient.toShortString()
@@ -1197,7 +1192,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
     }
 
     override fun copyOpenGroupUrl(thread: Recipient) {
-        if (!thread.isOpenGroupRecipient) { return }
+        if (!thread.isCommunityRecipient) { return }
 
         val threadId = threadDb.getThreadIdIfExistsFor(thread) ?: return
         val openGroup = lokiThreadDb.getOpenGroupChat(threadId) ?: return
@@ -1335,6 +1330,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
             sendEmojiRemoval(emoji, messageRecord)
         } else {
             sendEmojiReaction(emoji, messageRecord)
+            RecentEmojiPageModel.onCodePointSelected(emoji) // Save to recently used reaction emojis
         }
     }
 
@@ -1361,7 +1357,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         } else originalMessage.individualRecipient.address
         // Send it
         reactionMessage.reaction = Reaction.from(originalMessage.timestamp, originalAuthor.serialize(), emoji, true)
-        if (recipient.isOpenGroupRecipient) {
+        if (recipient.isCommunityRecipient) {
             val messageServerId = lokiMessageDb.getServerID(originalMessage.id, !originalMessage.isMms) ?: return
             viewModel.openGroup?.let {
                 OpenGroupApi.addReaction(it.room, it.server, messageServerId, emoji)
@@ -1385,7 +1381,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         } else originalMessage.individualRecipient.address
 
         message.reaction = Reaction.from(originalMessage.timestamp, originalAuthor.serialize(), emoji, false)
-        if (recipient.isOpenGroupRecipient) {
+        if (recipient.isCommunityRecipient) {
             val messageServerId = lokiMessageDb.getServerID(originalMessage.id, !originalMessage.isMms) ?: return
             viewModel.openGroup?.let {
                 OpenGroupApi.deleteReaction(it.room, it.server, messageServerId, emoji)
@@ -1782,7 +1778,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                 sendAttachments(slideDeck.asAttachments(), body)
             }
             INVITE_CONTACTS -> {
-                if (viewModel.recipient?.isOpenGroupRecipient != true) { return }
+                if (viewModel.recipient?.isCommunityRecipient != true) { return }
                 val extras = intent?.extras ?: return
                 if (!intent.hasExtra(selectedContactsKey)) { return }
                 val selectedContacts = extras.getStringArray(selectedContactsKey)!!
@@ -1848,19 +1844,61 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         handleLongPress(messages.first(), 0) //TODO: begin selection mode
     }
 
+    // The option to "Delete just for me" or "Delete for everyone"
+    private fun showDeleteOrDeleteForEveryoneInCommunityUI(messages: Set<MessageRecord>) {
+        val bottomSheet = DeleteOptionsBottomSheet()
+        bottomSheet.recipient = viewModel.recipient!!
+        bottomSheet.onDeleteForMeTapped = {
+            messages.forEach(viewModel::deleteLocally)
+            bottomSheet.dismiss()
+            endActionMode()
+        }
+        bottomSheet.onDeleteForEveryoneTapped = {
+            messages.forEach(viewModel::deleteForEveryone)
+            bottomSheet.dismiss()
+            endActionMode()
+        }
+        bottomSheet.onCancelTapped = {
+            bottomSheet.dismiss()
+            endActionMode()
+        }
+        bottomSheet.show(supportFragmentManager, bottomSheet.tag)
+    }
+
+    private fun showDeleteLocallyUI(messages: Set<MessageRecord>) {
+        val messageCount = 1
+        showSessionDialog {
+            title(resources.getQuantityString(R.plurals.ConversationFragment_delete_selected_messages, messageCount, messageCount))
+            text(resources.getQuantityString(R.plurals.ConversationFragment_this_will_permanently_delete_all_n_selected_messages, messageCount, messageCount))
+            button(R.string.delete) { messages.forEach(viewModel::deleteLocally); endActionMode() }
+            cancelButton(::endActionMode)
+        }
+    }
+
+    // Note: The messages in the provided set may be a single message, or multiple if there are a
+    // group of selected messages.
     override fun deleteMessages(messages: Set<MessageRecord>) {
-        val recipient = viewModel.recipient ?: return
+        val recipient = viewModel.recipient
+        if (recipient == null) {
+            Log.w("ConversationActivityV2", "Asked to delete messages but could not obtain viewModel recipient - aborting.")
+            return
+        }
+        
         val allSentByCurrentUser = messages.all { it.isOutgoing }
         val allHasHash = messages.all { lokiMessageDb.getMessageServerHash(it.id, it.isMms) != null }
-        if (recipient.isOpenGroupRecipient) {
-            val messageCount = 1
 
+        // If the recipient is a community OR a Note-to-Self then we delete the message for everyone
+        if (recipient.isCommunityRecipient || recipient.isLocalNumber) {
+            val messageCount = 1 // Only used for plurals string
             showSessionDialog {
                 title(resources.getQuantityString(R.plurals.ConversationFragment_delete_selected_messages, messageCount, messageCount))
                 text(resources.getQuantityString(R.plurals.ConversationFragment_this_will_permanently_delete_all_n_selected_messages, messageCount, messageCount))
-                button(R.string.delete) { messages.forEach(viewModel::deleteForEveryone); endActionMode() }
+                button(R.string.delete) {
+                    messages.forEach(viewModel::deleteForEveryone); endActionMode()
+                }
                 cancelButton { endActionMode() }
             }
+        // Otherwise if this is a 1-on-1 conversation we may decided to delete just for ourselves or delete for everyone
         } else if (allSentByCurrentUser && allHasHash) {
             val bottomSheet = DeleteOptionsBottomSheet()
             bottomSheet.recipient = recipient
@@ -1879,13 +1917,16 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                 endActionMode()
             }
             bottomSheet.show(supportFragmentManager, bottomSheet.tag)
-        } else {
+        }
+        else // Finally, if this is a closed group and you are deleting someone else's message(s) then we can only delete locally.
+        {
             val messageCount = 1
-
             showSessionDialog {
                 title(resources.getQuantityString(R.plurals.ConversationFragment_delete_selected_messages, messageCount, messageCount))
                 text(resources.getQuantityString(R.plurals.ConversationFragment_this_will_permanently_delete_all_n_selected_messages, messageCount, messageCount))
-                button(R.string.delete) { messages.forEach(viewModel::deleteLocally); endActionMode() }
+                button(R.string.delete) {
+                    messages.forEach(viewModel::deleteLocally); endActionMode()
+                }
                 cancelButton(::endActionMode)
             }
         }
@@ -1904,7 +1945,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         showSessionDialog {
             title(R.string.ConversationFragment_ban_selected_user)
             text("This will ban the selected user from this room and delete all messages sent by them. It won't ban them from other rooms or delete the messages they sent there.")
-            button(R.string.ban) { viewModel.banAndDeleteAll(messages.first().individualRecipient); endActionMode() }
+            button(R.string.ban) { viewModel.banAndDeleteAll(messages.first()); endActionMode() }
             cancelButton(::endActionMode)
         }
     }
@@ -1986,7 +2027,6 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         val message = messages.first() as MmsMessageRecord
 
         // Do not allow the user to download a file attachment before it has finished downloading
-        // TODO: Localise the msg in this toast!
         if (message.isMediaPending) {
             Toast.makeText(this, resources.getString(R.string.conversation_activity__wait_until_attachment_has_finished_downloading), Toast.LENGTH_LONG).show()
             return
