@@ -668,14 +668,15 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
     @Throws(MmsException::class)
     fun insertMessageOutbox(
         message: OutgoingMediaMessage,
-        threadId: Long, forceSms: Boolean,
+        threadId: Long,
+        forceSms: Boolean,
         insertListener: InsertListener?,
         serverTimestamp: Long = 0,
         runThreadUpdate: Boolean
     ): Long {
+        // Build up the type mask for the message
         var type = MmsSmsColumns.Types.BASE_SENDING_TYPE
-        if (message.isSecure) type =
-            type or (MmsSmsColumns.Types.SECURE_MESSAGE_BIT or MmsSmsColumns.Types.PUSH_MESSAGE_BIT)
+        if (message.isSecure) type = type or (MmsSmsColumns.Types.SECURE_MESSAGE_BIT or MmsSmsColumns.Types.PUSH_MESSAGE_BIT)
         if (forceSms) type = type or MmsSmsColumns.Types.MESSAGE_FORCE_SMS_BIT
         if (message.isGroup && message is OutgoingGroupMediaMessage) {
             if (message.isUpdateMessage) type = type or MmsSmsColumns.Types.GROUP_UPDATE_MESSAGE_BIT
@@ -683,14 +684,20 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
         if (message.isExpirationUpdate) {
             type = type or MmsSmsColumns.Types.EXPIRATION_TIMER_UPDATE_BIT
         }
+
+        // Remove early delivery & read receipts
+        // ACL Note: What the hell are these?
         val earlyDeliveryReceipts = earlyDeliveryReceiptCache.remove(message.sentTimeMillis)
         val earlyReadReceipts = earlyReadReceiptCache.remove(message.sentTimeMillis)
+
+        // Populate all the ContentValues to store the message details
         val contentValues = ContentValues()
         contentValues.put(DATE_SENT, message.sentTimeMillis)
         contentValues.put(MESSAGE_TYPE, PduHeaders.MESSAGE_TYPE_SEND_REQ)
         contentValues.put(MESSAGE_BOX, type)
         contentValues.put(THREAD_ID, threadId)
         contentValues.put(READ, 1)
+
         // In open groups messages should be sorted by their server timestamp
         var receivedTimestamp = serverTimestamp
         if (serverTimestamp == 0L) {
@@ -716,6 +723,13 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
             contentValues.put(QUOTE_MISSING, if (message.outgoingQuote!!.missing) 1 else 0)
             quoteAttachments.addAll(message.outgoingQuote!!.attachments!!)
         }
+
+
+        // ACL
+        //if (MmsSmsDatabase.getL)
+
+
+
         if (isDuplicate(message, threadId)) {
             Log.w(TAG, "Ignoring duplicate media message (" + message.sentTimeMillis + ")")
             return -1
@@ -727,8 +741,9 @@ class MmsDatabase(context: Context, databaseHelper: SQLCipherOpenHelper) : Messa
             message.sharedContacts,
             message.linkPreviews,
             contentValues,
-            insertListener,
+            insertListener
         )
+
         if (message.recipient.address.isGroup) {
             val members = get(context).groupDatabase()
                 .getGroupMembers(message.recipient.address.toGroupString(), false)

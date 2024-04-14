@@ -72,6 +72,7 @@ object SnodeAPI {
     private val maxRetryCount = 6
     private val minimumSnodePoolCount = 12
     private val minimumSwarmSnodeCount = 3
+
     // Use port 4433 if the API level can handle the network security configuration and enforce pinned certificates
     private val seedNodePort = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) 443 else 4443
     private val seedNodePool by lazy {

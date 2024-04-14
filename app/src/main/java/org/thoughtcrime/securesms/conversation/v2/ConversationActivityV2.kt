@@ -1638,9 +1638,11 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         quotedMessage: MessageRecord? = binding?.inputBar?.quote,
         linkPreview: LinkPreview? = null
     ): Pair<Address, Long>? {
+        Log.w("[ACL]", "Hit send attachments!")
         val recipient = viewModel.recipient ?: return null
         val sentTimestamp = SnodeAPI.nowWithOffset
         processMessageRequestApproval()
+
         // Create the message
         val message = VisibleMessage().applyExpiryMode(viewModel.threadId)
         message.sentTimestamp = sentTimestamp
