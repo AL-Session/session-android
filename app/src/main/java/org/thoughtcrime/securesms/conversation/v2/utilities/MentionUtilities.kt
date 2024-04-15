@@ -15,6 +15,7 @@ import org.session.libsession.messaging.contacts.Contact
 import org.session.libsession.messaging.open_groups.OpenGroup
 import org.session.libsession.messaging.utilities.SodiumUtilities
 import org.session.libsession.utilities.TextSecurePreferences
+import org.session.libsession.utilities.TextSecurePreferences.Companion.getAccentColorStyle
 import org.thoughtcrime.securesms.dependencies.DatabaseComponent
 import org.thoughtcrime.securesms.util.UiModeUtilities
 import org.thoughtcrime.securesms.util.getAccentColor
@@ -67,8 +68,26 @@ object MentionUtilities {
             val backgroundColor: Int?
             val foregroundColor: Int
             if (isYou(mention.second, userPublicKey, openGroup)) {
-                backgroundColor = ResourcesCompat.getColor(context.resources, R.color.accent, context.theme)
+
+                //val accentColor = TextSecurePreferences.getStringPreference(context, TextSecurePreferences.SELECTED_ACCENT_COLOR, TextSecurePreferences.ORANGE_ACCENT)
+
+                //var colorStyle = getAccentColorStyle(context)
+                //val typedArray = context.obtainStyledAttributes(colorStyle, intArrayOf(R.attr.colorAccent))
+                //val accentColor = typedArray.getColor(0, R.color.accent_orange)
+                //val accentColor = typedArray.getColor(0, context.resources.getColor(R.color.accent_orange))
+                //val accentColor = typedArray.getColor(0, context.resources.getColor(R.color.accent_orange, context.resources.thcolorStyle))
+                //typedArray.recycle()
+                var accentColour = context.getAccentColor()
+
+                // ACL TODO: Get the correct accent colour for the current theme!
+                backgroundColor = ResourcesCompat.getColor(context.resources, R.color.accent_orange, context.theme)
                 foregroundColor = ResourcesCompat.getColor(context.resources, R.color.black, context.theme)
+
+
+
+
+
+
             } else if (isOutgoingMessage) {
                 backgroundColor = null
                 foregroundColor = ResourcesCompat.getColor(context.resources, if (isLightMode) R.color.white else R.color.black, context.theme)

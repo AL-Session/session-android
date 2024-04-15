@@ -982,7 +982,7 @@ interface TextSecurePreferences {
         }
 
         @JvmStatic @StyleRes
-        fun getAccentColorStyle(context: Context): Int? {
+        fun getAccentColorStyle(context: Context): Int {
             return when (getStringPreference(context, SELECTED_ACCENT_COLOR, ORANGE_ACCENT)) {
                 GREEN_ACCENT -> R.style.PrimaryGreen
                 BLUE_ACCENT -> R.style.PrimaryBlue
@@ -991,7 +991,7 @@ interface TextSecurePreferences {
                 RED_ACCENT -> R.style.PrimaryRed
                 ORANGE_ACCENT -> R.style.PrimaryOrange
                 YELLOW_ACCENT -> R.style.PrimaryYellow
-                else -> null
+                else -> R.style.PrimaryGreen // Fall back to primary green
             }
         }
 
