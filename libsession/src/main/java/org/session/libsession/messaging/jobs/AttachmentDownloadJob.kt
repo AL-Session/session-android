@@ -56,6 +56,7 @@ class AttachmentDownloadJob(val attachmentID: Long, val databaseMessageID: Long)
                     Log.d("AttachmentDownloadJob", "Setting attachment state = failed, have attachment")
                     messageDataProvider.setAttachmentState(AttachmentState.FAILED, id, databaseMessageID)
                 } ?: run {
+                    // TODO: This gets hit over and over when there is an untrusted attachment that we have not yet accepted and downloaded - fix it! -ACL 2024/04/19
                     Log.d("AttachmentDownloadJob", "Setting attachment state = failed, don't have attachment")
                     messageDataProvider.setAttachmentState(AttachmentState.FAILED, AttachmentId(attachmentID,0), databaseMessageID)
                 }

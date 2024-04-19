@@ -40,6 +40,9 @@ class UntrustedAttachmentView: LinearLayout {
 
         binding.untrustedAttachmentIcon.setImageDrawable(iconDrawable)
         binding.untrustedAttachmentTitle.text = text
+
+        // Note: Untrusted attachments have their onClick handlers bound in VisibleMessageContentView
+        // as we need the associated message details for the download dialog.
     }
     // endregion
 

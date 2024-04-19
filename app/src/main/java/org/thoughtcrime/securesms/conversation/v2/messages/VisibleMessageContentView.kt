@@ -29,6 +29,7 @@ import org.session.libsession.utilities.ThemeUtil
 import org.session.libsession.utilities.getColorFromAttr
 import org.session.libsession.utilities.modifyLayoutParams
 import org.session.libsession.utilities.recipients.Recipient
+import org.session.libsignal.utilities.Log
 import org.thoughtcrime.securesms.conversation.v2.ConversationActivityV2
 import org.thoughtcrime.securesms.conversation.v2.ModalUrlBottomSheet
 import org.thoughtcrime.securesms.conversation.v2.utilities.MentionUtilities
@@ -171,9 +172,11 @@ class VisibleMessageContentView : ConstraintLayout {
                     onContentClick.add { binding.voiceMessageView.root.togglePlayback() }
                     onContentDoubleTap = { binding.voiceMessageView.root.handleDoubleTap() }
                 } else {
-                    // TODO: move this out to its own area
+                    // Untrusted audio attachments get a onClick handler rather than OnContentClick to aid with automated testing
                     binding.untrustedView.root.bind(UntrustedAttachmentView.AttachmentType.AUDIO, VisibleMessageContentView.getTextColor(context,message))
-                    onContentClick.add { binding.untrustedView.root.showTrustDialog(message.individualRecipient) }
+                    binding.untrustedView.root.setOnClickListener {
+                        binding.untrustedView.root.showTrustDialog(message.individualRecipient)
+                    }
                 }
             }
             message is MmsMessageRecord && message.slideDeck.documentSlide != null -> {
@@ -182,8 +185,11 @@ class VisibleMessageContentView : ConstraintLayout {
                 if (contactIsTrusted || message.isOutgoing) {
                     binding.documentView.root.bind(message, VisibleMessageContentView.getTextColor(context, message))
                 } else {
+                    // Untrusted document attachments get a onClick handler rather than OnContentClick to aid with automated testing
                     binding.untrustedView.root.bind(UntrustedAttachmentView.AttachmentType.DOCUMENT, VisibleMessageContentView.getTextColor(context,message))
-                    onContentClick.add { binding.untrustedView.root.showTrustDialog(message.individualRecipient) }
+                    binding.untrustedView.root.setOnClickListener {
+                        binding.untrustedView.root.showTrustDialog(message.individualRecipient)
+                    }
                 }
             }
             message is MmsMessageRecord && !suppressThumbnails && message.slideDeck.asAttachments().isNotEmpty() -> {
@@ -208,8 +214,12 @@ class VisibleMessageContentView : ConstraintLayout {
                 } else {
                     hideBody = true
                     binding.albumThumbnailView.root.clearViews()
+
+                    // Untrusted media attachments get a onClick handler rather than OnContentClick to aid with automated testing
                     binding.untrustedView.root.bind(UntrustedAttachmentView.AttachmentType.MEDIA, VisibleMessageContentView.getTextColor(context,message))
-                    onContentClick.add { binding.untrustedView.root.showTrustDialog(message.individualRecipient) }
+                    binding.untrustedView.root.setOnClickListener {
+                        binding.untrustedView.root.showTrustDialog(message.individualRecipient)
+                    }
                 }
             }
             message.isOpenGroupInvitation -> {
