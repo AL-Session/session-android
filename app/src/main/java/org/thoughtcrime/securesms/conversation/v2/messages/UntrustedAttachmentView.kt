@@ -13,7 +13,9 @@ import org.thoughtcrime.securesms.util.ActivityDispatcher
 import java.util.Locale
 
 class UntrustedAttachmentView: LinearLayout {
+
     private val binding: ViewUntrustedAttachmentBinding by lazy { ViewUntrustedAttachmentBinding.bind(this) }
+
     enum class AttachmentType {
         AUDIO,
         DOCUMENT,
@@ -30,9 +32,9 @@ class UntrustedAttachmentView: LinearLayout {
     // region Updating
     fun bind(attachmentType: AttachmentType, @ColorInt textColor: Int) {
         val (iconRes, stringRes) = when (attachmentType) {
-            AttachmentType.AUDIO -> R.drawable.ic_microphone to R.string.Slide_audio
+            AttachmentType.AUDIO    -> R.drawable.ic_microphone to R.string.Slide_audio
             AttachmentType.DOCUMENT -> R.drawable.ic_document_large_light to R.string.document
-            AttachmentType.MEDIA -> R.drawable.ic_image_white_24dp to R.string.media
+            AttachmentType.MEDIA    -> R.drawable.ic_image_white_24dp to R.string.media
         }
         val iconDrawable = ContextCompat.getDrawable(context,iconRes)!!
         iconDrawable.mutate().setTint(textColor)
@@ -40,6 +42,9 @@ class UntrustedAttachmentView: LinearLayout {
 
         binding.untrustedAttachmentIcon.setImageDrawable(iconDrawable)
         binding.untrustedAttachmentTitle.text = text
+
+        // Note: Untrusted attachments have their onClick handlers bound in VisibleMessageContentView
+        // as we need the associated message details for the download dialog.
     }
     // endregion
 

@@ -149,7 +149,7 @@ fun MessageDetails(
     onResend: (() -> Unit)? = null,
     onDelete: () -> Unit = {},
     onClickImage: (Int) -> Unit = {},
-    onAttachmentNeedsDownload: (Long, Long) -> Unit = { _, _ -> }
+    onAttachmentNeedsDownload: (Long, Long, Boolean) -> Unit = { _, _, _ -> }
 ) {
     Column(
         modifier = Modifier

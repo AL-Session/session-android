@@ -297,6 +297,8 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
     // as read if we reverse the message list so this is now hard-coded to false
     private val reverseMessageList = false
 
+    private val attemptedAttachmentDownloadJobs = mutableListOf<Pair<Long, Long>>()
+
     private val adapter by lazy {
         val cursor = mmsSmsDb.getConversation(viewModel.threadId, reverseMessageList)
         val adapter = ConversationAdapter(
@@ -324,10 +326,31 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                     onDeselect(message, position, it)
                 }
             },
-            onAttachmentNeedsDownload = { attachmentId, mmsId ->
-                // Start download (on IO thread)
-                lifecycleScope.launch(Dispatchers.IO) {
-                    JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
+            onAttachmentNeedsDownload = { attachmentId, mmsId, contactIsTrusted ->
+
+                // ACL Even better - check if we have permissions to download before we do ANY of the above - and don't proceed without them
+                // would have to be per conversation (which I think would be the mmsId??? Or nah? It's THIS conversation anyway!)
+                //HERE!
+
+                //if (sessionContactDb) contactIsTrusted
+                //sessionContactDb.setContactIsTrusted()
+                //viewModel.recipient.isApproved
+                Log.w("[ACL]", "Still hitting this!")
+                if (!contactIsTrusted) return@ConversationAdapter;
+
+
+                val pair = Pair(attachmentId, mmsId)
+
+                // If we haven't already created a download attachment job for this attachment/mmsId
+                // pair then do so (otherwise don't!) - without this check a download attachment job
+                // can fail such as because the user hasn't granted create a new job - we've already tried & likely failed!)
+                if (!attemptedAttachmentDownloadJobs.contains(pair)) {
+                    attemptedAttachmentDownloadJobs.add(pair)
+                    // Start download (on IO thread)
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        Log.w("[ACL]", "Adding attachment job - attachmentID: $attachmentId, mmsId: $mmsId")
+                        JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
+                    }
                 }
             },
             glide = glide,

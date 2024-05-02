@@ -81,8 +81,8 @@ class MessageDetailsViewModel @Inject constructor(
                     sent = dateSent.let(::Date).toString().let { TitledText(R.string.message_details_header__sent, it) },
                     received = dateReceived.let(::Date).toString().let { TitledText(R.string.message_details_header__received, it) },
                     error = lokiMessageDatabase.getErrorMessage(id)?.let { TitledText(R.string.message_details_header__error, it) },
-                    senderInfo = individualRecipient.run { name?.let { TitledText(it, address.serialize()) } },
-                    sender = individualRecipient,
+                    senderInfo = recipient.run { name?.let { TitledText(it, address.serialize()) } }, // ACL changed from `individualRecipient.run`
+                    sender = recipient, // ACL changed from `individualRecipient`
                     thread = threadDb.getRecipientForThreadId(threadId)!!,
                 )
             }
@@ -124,7 +124,7 @@ class MessageDetailsViewModel @Inject constructor(
         if (slide.transferState == AttachmentTransferProgress.TRANSFER_PROGRESS_FAILED) {
             // Restart download here (on IO thread)
             (slide.asAttachment() as? DatabaseAttachment)?.let { attachment ->
-                onAttachmentNeedsDownload(attachment.attachmentId.rowId, state.mmsRecord.getId())
+                onAttachmentNeedsDownload(attachment.attachmentId.rowId, state.mmsRecord.getId(), true) // ACL Change this to look up if the contact is trusted
             }
         }
 
@@ -137,7 +137,7 @@ class MessageDetailsViewModel @Inject constructor(
         }
     }
 
-    fun onAttachmentNeedsDownload(attachmentId: Long, mmsId: Long) {
+    fun onAttachmentNeedsDownload(attachmentId: Long, mmsId: Long, contactIsTrusted: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
         }

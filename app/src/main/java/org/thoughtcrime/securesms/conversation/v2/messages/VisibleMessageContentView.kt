@@ -66,7 +66,7 @@ class VisibleMessageContentView : ConstraintLayout {
         thread: Recipient,
         searchQuery: String? = null,
         contactIsTrusted: Boolean = true,
-        onAttachmentNeedsDownload: (Long, Long) -> Unit,
+        onAttachmentNeedsDownload: (Long, Long, Boolean) -> Unit,
         suppressThumbnails: Boolean = false
     ) {
         // Background
@@ -138,7 +138,7 @@ class VisibleMessageContentView : ConstraintLayout {
                 val attachmentId = dbAttachment.attachmentId.rowId
                 if (attach.transferState == AttachmentTransferProgress.TRANSFER_PROGRESS_PENDING
                     && MessagingModuleConfiguration.shared.storage.getAttachmentUploadJob(attachmentId) == null) {
-                    onAttachmentNeedsDownload(attachmentId, dbAttachment.mmsId)
+                    onAttachmentNeedsDownload(attachmentId, dbAttachment.mmsId, contactIsTrusted)
                 }
             }
             message.linkPreviews.forEach { preview ->
@@ -146,7 +146,7 @@ class VisibleMessageContentView : ConstraintLayout {
                 val attachmentId = previewThumbnail.attachmentId.rowId
                 if (previewThumbnail.transferState == AttachmentTransferProgress.TRANSFER_PROGRESS_PENDING
                     && MessagingModuleConfiguration.shared.storage.getAttachmentUploadJob(attachmentId) == null) {
-                    onAttachmentNeedsDownload(attachmentId, previewThumbnail.mmsId)
+                    onAttachmentNeedsDownload(attachmentId, previewThumbnail.mmsId, contactIsTrusted)
                 }
             }
         }
@@ -171,9 +171,11 @@ class VisibleMessageContentView : ConstraintLayout {
                     onContentClick.add { binding.voiceMessageView.root.togglePlayback() }
                     onContentDoubleTap = { binding.voiceMessageView.root.handleDoubleTap() }
                 } else {
-                    // TODO: move this out to its own area
+                    // Untrusted audio attachments get a onClick handler rather than OnContentClick to aid with automated testing
                     binding.untrustedView.root.bind(UntrustedAttachmentView.AttachmentType.AUDIO, VisibleMessageContentView.getTextColor(context,message))
-                    onContentClick.add { binding.untrustedView.root.showTrustDialog(message.individualRecipient) }
+                    binding.untrustedView.root.setOnClickListener {
+                        binding.untrustedView.root.showTrustDialog(message.individualRecipient)
+                    }
                 }
             }
             message is MmsMessageRecord && message.slideDeck.documentSlide != null -> {
@@ -182,8 +184,10 @@ class VisibleMessageContentView : ConstraintLayout {
                 if (contactIsTrusted || message.isOutgoing) {
                     binding.documentView.root.bind(message, VisibleMessageContentView.getTextColor(context, message))
                 } else {
-                    binding.untrustedView.root.bind(UntrustedAttachmentView.AttachmentType.DOCUMENT, VisibleMessageContentView.getTextColor(context,message))
-                    onContentClick.add { binding.untrustedView.root.showTrustDialog(message.individualRecipient) }
+                    binding.untrustedView.root.bind(UntrustedAttachmentView.AttachmentType.DOCUMENT, VisibleMessageContentView.getTextColor(context, message))
+                    binding.untrustedView.root.setOnClickListener {
+                        binding.untrustedView.root.showTrustDialog(message.individualRecipient)
+                    }
                 }
             }
             message is MmsMessageRecord && !suppressThumbnails && message.slideDeck.asAttachments().isNotEmpty() -> {
@@ -205,11 +209,15 @@ class VisibleMessageContentView : ConstraintLayout {
                     onContentClick.add { event ->
                         binding.albumThumbnailView.root.calculateHitObject(event, message, thread, onAttachmentNeedsDownload)
                     }
+
                 } else {
                     hideBody = true
                     binding.albumThumbnailView.root.clearViews()
                     binding.untrustedView.root.bind(UntrustedAttachmentView.AttachmentType.MEDIA, VisibleMessageContentView.getTextColor(context,message))
-                    onContentClick.add { binding.untrustedView.root.showTrustDialog(message.individualRecipient) }
+                    // Untrusted media attachments get a onClick handler rather than OnContentClick to aid with automated testing
+                    binding.untrustedView.root.setOnClickListener {
+                        binding.untrustedView.root.showTrustDialog(message.individualRecipient)
+                    }
                 }
             }
             message.isOpenGroupInvitation -> {

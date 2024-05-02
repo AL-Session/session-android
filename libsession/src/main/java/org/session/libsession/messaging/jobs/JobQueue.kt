@@ -1,5 +1,6 @@
 package org.session.libsession.messaging.jobs
 
+import android.app.job.JobScheduler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +128,8 @@ class JobQueue : JobDelegate {
                     }
                     is RetrieveProfileAvatarJob,
                     is AttachmentDownloadJob -> {
-                        mediaQueue.send(job)
+                        Log.w("[ACL]", "There is a media queue job - id is: ${job.id}") // ACL This keeps getting hit, so something is keeping adding jobs to the queue!!!
+                        if (job.failureCount < job.maxFailureCount) mediaQueue.send(job) // failure check doesn't work because they're all new jobs!
                     }
                     is GroupAvatarDownloadJob,
                     is BackgroundGroupAddJob,
@@ -281,6 +283,14 @@ class JobQueue : JobDelegate {
         val jobId = job.id ?: return
         handleJobFailedPermanently(jobId)
         Log.d(dispatcherName, "permanentlyFailedJob: ${javaClass.simpleName} (id: ${job.id})")
+
+        // ACL
+        //queue.cancel(
+
+        // Set the failure count to the max failure count so the job stops
+        job.failureCount = job.maxFailureCount
+
+        Log.w("[ACL]", "Failure count: ${job.failureCount} of max: ${job.maxFailureCount}")
     }
 
     private fun handleJobFailedPermanently(jobId: String) {
