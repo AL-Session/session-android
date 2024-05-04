@@ -17,16 +17,16 @@ import androidx.annotation.Nullable;
 import android.util.Pair;
 import android.widget.Toast;
 
-import com.google.android.exoplayer2.C;
+import androidx.media3.common.C;
 import com.google.android.exoplayer2.DefaultLoadControl;
 import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.ExoPlaybackException;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.LoadControl;
-import com.google.android.exoplayer2.PlaybackParameters;
-import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.audio.AudioAttributes;
+import androidx.media3.common.PlaybackParameters;
+import androidx.media3.common.Player;
+import com.google.android.exoplayer2.ExoPlayer;
+import androidx.media3.common.AudioAttributes;
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
@@ -64,7 +64,7 @@ public class AudioSlidePlayer implements SensorEventListener {
   private final @Nullable WakeLock          wakeLock;
 
   private @NonNull  WeakReference<Listener> listener;
-  private @Nullable SimpleExoPlayer         mediaPlayer;
+  private @Nullable ExoPlayer         mediaPlayer;
   private @Nullable AttachmentServer        audioAttachmentServer;
   private           long                    startTime;
 
@@ -406,7 +406,7 @@ public class AudioSlidePlayer implements SensorEventListener {
       sendEmptyMessageDelayed(0, 50);
     }
 
-    private boolean isPlayerActive(@NonNull SimpleExoPlayer player) {
+    private boolean isPlayerActive(@NonNull ExoPlayer player) {
       return player.getPlaybackState() == Player.STATE_READY || player.getPlaybackState() == Player.STATE_BUFFERING;
     }
   }

@@ -290,8 +290,8 @@ dependencies {
         exclude group: 'com.google.firebase', module: 'firebase-measurement-connector'
     }
     if (project.hasProperty('huawei')) huaweiImplementation 'com.huawei.hms:push:6.7.0.300'
-    implementation "com.google.android.exoplayer:exoplayer-core:$exoPlayerCoreVersion"
-    implementation "com.google.android.exoplayer:exoplayer-ui:$exoPlayerUiVersion"
+    implementation "androidx.media3:media3-exoplayer:1.1.1"
+    implementation "androidx.media3:media3-ui:1.1.1"
     implementation 'org.conscrypt:conscrypt-android:2.0.0'
     implementation 'org.signal:aesgcmprovider:0.0.3'
 
