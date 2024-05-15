@@ -139,8 +139,7 @@ class ConversationAdapter(
                         senderId,
                         lastSeen.get(),
                         visibleMessageViewDelegate,
-                        onAttachmentNeedsDownload,
-                        lastSentMessageId
+                        onAttachmentNeedsDownload
                 )
 
                 if (!message.isDeleted) {
@@ -216,8 +215,7 @@ class ConversationAdapter(
         if (cursorHasContent) {
             val thisThreadId = cursor.getLong(4) // Column index 4 is "thread_id"
             if (thisThreadId != -1L) {
-                val thisUsersSessionId = TextSecurePreferences.getLocalNumber(context)
-                return messageDB.getLastSentMessageFromSender(thisThreadId, thisUsersSessionId)
+                return messageDB.getLastOutgoingMessage(thisThreadId)
             }
         }
         return -1L

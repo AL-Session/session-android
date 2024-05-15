@@ -299,11 +299,11 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
 
     private val adapter by lazy {
 
-        // To prevent repeated attachment download jobs being spawned we'll keep a set of what
-        // attachmentId / mmsId pairs we've already attempted to download and only spawn the job
-        // if we haven't already done so. Without this then when the retry limit for a failed job
-        // hits another job is immediately spawned (endlessly).
-        var alreadyAttemptedAttachmentDownloadPairs = mutableSetOf<Pair<Long, Long>>()
+        // To prevent repeated attachment download jobs being spawned we'll keep track of the
+        // attachment Ids we've attempted to download, and only spawn job if we haven't already
+        // tried. Without this then when the retry limit for a failed job hits another job is
+        // immediately spawned (endlessly).
+        val alreadyAttemptedAttachmentDownloads = mutableSetOf<Long>()
 
         val cursor = mmsSmsDb.getConversation(viewModel.threadId, reverseMessageList)
         val adapter = ConversationAdapter(
@@ -332,12 +332,9 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                 }
             },
             onAttachmentNeedsDownload = { attachmentId, mmsId ->
-                // Keep track of this specific attachment so we don't download it again
-                val pair = Pair(attachmentId, mmsId)
-                if (!alreadyAttemptedAttachmentDownloadPairs.contains(pair)) {
-                    alreadyAttemptedAttachmentDownloadPairs.add(pair)
 
-                    // Start download (on IO thread)
+                alreadyAttemptedAttachmentDownloads.takeUnless { attachmentId in alreadyAttemptedAttachmentDownloads }.let {
+                    alreadyAttemptedAttachmentDownloads += attachmentId
                     lifecycleScope.launch(Dispatchers.IO) {
                         JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
                     }

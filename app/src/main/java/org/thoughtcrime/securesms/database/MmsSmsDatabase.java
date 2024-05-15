@@ -295,29 +295,19 @@ public class MmsSmsDatabase extends Database {
     return identifiedMessages;
   }
 
-  public long getLastSentMessageFromSender(long threadId, String serializedAuthor) {
-
-    // Early exit
-    boolean isOwnNumber = Util.isOwnNumber(context, serializedAuthor);
-    if (!isOwnNumber) {
-      Log.i(TAG, "Asked to find last sent message but sender isn't us - returning null.");
-      return -1;
-    }
-
+  public long getLastOutgoingMessage(long threadId) {
     String order = MmsSmsColumns.NORMALIZED_DATE_SENT + " DESC";
+    String selection = MmsSmsColumns.THREAD_ID + " = " + threadId;
 
-    // As the MmsSmsDatabase.ADDRESS column never contains the sender address we have to get creative to filter down all the
-    // messages that have been sent without interrogating each MessageRecord returned by the cursor. One way to do this is
-    // via the fact that the `ADDRESS_DEVICE_ID` is always null for incoming messages, but always has a value (such as 1) for
-    // outgoing messages - so we'll filter our query for only records with non-null ADDRESS_DEVICE_IDs in the current thread.
-    String selection = MmsSmsColumns.THREAD_ID + " = " + threadId + " AND " + MmsSmsColumns.ADDRESS_DEVICE_ID + " IS NOT NULL";
-
-    // Try everything with resources so that they auto-close on end of scope
+    // Try everything with resources so that they auto-close on end of scope.
+    // Note: Do NOT call cursor.moveToFirst() once we have it, for reasons unknown to me it breaks the functionality. -AL
     try (Cursor cursor = queryTables(PROJECTION, selection, order, null)) {
       try (MmsSmsDatabase.Reader reader = readerFor(cursor)) {
         MessageRecord messageRecord;
         while ((messageRecord = reader.getNext()) != null) {
-          if (messageRecord.isOutgoing()) { return messageRecord.id; }
+          // Note: We rely on the message order to get us the most recent outgoing message - so we
+          // take the first outgoing message we find.
+          if (messageRecord.isOutgoing()) return messageRecord.id;
         }
       }
     }
