@@ -306,7 +306,7 @@ public class MmsSmsDatabase extends Database {
         MessageRecord messageRecord;
         while ((messageRecord = reader.getNext()) != null) {
           // Note: We rely on the message order to get us the most recent outgoing message - so we
-          // take the first outgoing message we find.
+          // take the first outgoing message we find as the last outgoing message.
           if (messageRecord.isOutgoing()) return messageRecord.id;
         }
       }

@@ -299,10 +299,10 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
 
     private val adapter by lazy {
 
-        // To prevent repeated attachment download jobs being spawned we'll keep track of the
-        // attachment Ids we've attempted to download, and only spawn job if we haven't already
-        // tried. Without this then when the retry limit for a failed job hits another job is
-        // immediately spawned (endlessly).
+        // To prevent repeated attachment download jobs being spawned for any that fail we'll keep
+        // track of the attachment Ids we've attempted to download. Without this guard mechanism
+        // then when the retry limit for a failed job is reached another job is immediately spawned
+        // to download the same attachment (endlessly).
         val alreadyAttemptedAttachmentDownloads = mutableSetOf<Long>()
 
         val cursor = mmsSmsDb.getConversation(viewModel.threadId, reverseMessageList)
@@ -333,7 +333,9 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
             },
             onAttachmentNeedsDownload = { attachmentId, mmsId ->
 
-                alreadyAttemptedAttachmentDownloads.takeUnless { attachmentId in alreadyAttemptedAttachmentDownloads }.let {
+                alreadyAttemptedAttachmentDownloads.takeUnless {
+                    attachmentId in alreadyAttemptedAttachmentDownloads
+                }.let {
                     alreadyAttemptedAttachmentDownloads += attachmentId
                     lifecycleScope.launch(Dispatchers.IO) {
                         JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
