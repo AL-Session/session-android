@@ -305,7 +305,12 @@ public class MmsSmsDatabase extends Database {
     }
 
     String order = MmsSmsColumns.NORMALIZED_DATE_SENT + " DESC";
-    String selection = MmsSmsColumns.THREAD_ID + " = " + threadId;
+
+    // As the MmsSmsDatabase.ADDRESS column never contains the sender address we have to get creative to filter down all the
+    // messages that have been sent without interrogating each MessageRecord returned by the cursor. One way to do this is
+    // via the fact that the `ADDRESS_DEVICE_ID` is always null for incoming messages, but always has a value (such as 1) for
+    // outgoing messages - so we'll filter our query for only records with non-null ADDRESS_DEVICE_IDs in the current thread.
+    String selection = MmsSmsColumns.THREAD_ID + " = " + threadId + " AND " + MmsSmsColumns.ADDRESS_DEVICE_ID + " IS NOT NULL";
 
     // Try everything with resources so that they auto-close on end of scope
     try (Cursor cursor = queryTables(PROJECTION, selection, order, null)) {

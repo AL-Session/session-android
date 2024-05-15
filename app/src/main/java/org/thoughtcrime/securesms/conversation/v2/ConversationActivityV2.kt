@@ -298,6 +298,13 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
     private val reverseMessageList = false
 
     private val adapter by lazy {
+
+        // To prevent repeated attachment download jobs being spawned we'll keep a set of what
+        // attachmentId / mmsId pairs we've already attempted to download and only spawn the job
+        // if we haven't already done so. Without this then when the retry limit for a failed job
+        // hits another job is immediately spawned (endlessly).
+        var alreadyAttemptedAttachmentDownloadPairs = mutableSetOf<Pair<Long, Long>>()
+
         val cursor = mmsSmsDb.getConversation(viewModel.threadId, reverseMessageList)
         val adapter = ConversationAdapter(
             this,
@@ -325,9 +332,15 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                 }
             },
             onAttachmentNeedsDownload = { attachmentId, mmsId ->
-                // Start download (on IO thread)
-                lifecycleScope.launch(Dispatchers.IO) {
-                    JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
+                // Keep track of this specific attachment so we don't download it again
+                val pair = Pair(attachmentId, mmsId)
+                if (!alreadyAttemptedAttachmentDownloadPairs.contains(pair)) {
+                    alreadyAttemptedAttachmentDownloadPairs.add(pair)
+
+                    // Start download (on IO thread)
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
+                    }
                 }
             },
             glide = glide,
@@ -335,8 +348,8 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         )
         adapter.visibleMessageViewDelegate = this
 
-        // Register an AdapterDataObserver to scroll us to the bottom of the RecyclerView if we're
-        // already near the the bottom and the data changes.
+        // Register an AdapterDataObserver to scroll us to the bottom of the RecyclerView for if
+        // we're already near the the bottom and the data changes.
         adapter.registerAdapterDataObserver(ConversationAdapterDataObserver(binding?.conversationRecyclerView!!, adapter))
 
         adapter
