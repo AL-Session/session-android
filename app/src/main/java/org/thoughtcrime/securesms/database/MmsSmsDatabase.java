@@ -299,8 +299,7 @@ public class MmsSmsDatabase extends Database {
     String order = MmsSmsColumns.NORMALIZED_DATE_SENT + " DESC";
     String selection = MmsSmsColumns.THREAD_ID + " = " + threadId;
 
-    // Try everything with resources so that they auto-close on end of scope.
-    // Note: Do NOT call cursor.moveToFirst() once we have it, for reasons unknown to me it breaks the functionality. -AL
+    // Try everything with resources so that they auto-close on end of scope
     try (Cursor cursor = queryTables(PROJECTION, selection, order, null)) {
       try (MmsSmsDatabase.Reader reader = readerFor(cursor)) {
         MessageRecord messageRecord;
