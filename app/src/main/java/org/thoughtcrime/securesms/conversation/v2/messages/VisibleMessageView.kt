@@ -134,8 +134,7 @@ class VisibleMessageView : LinearLayout {
         senderSessionID: String,
         lastSeen: Long,
         delegate: VisibleMessageViewDelegate? = null,
-        onAttachmentNeedsDownload: (Long, Long) -> Unit,
-        lastSentMessageId: Long
+        onAttachmentNeedsDownload: (Long, Long) -> Unit
     ) {
         replyDisabled = message.isOpenGroupInvitation
         val threadID = message.threadId
@@ -303,8 +302,7 @@ class VisibleMessageView : LinearLayout {
 
         // --- If we got here then we know the message is outgoing ---
 
-        val thisUsersSessionId = TextSecurePreferences.getLocalNumber(context)
-        val lastSentMessageId = mmsSmsDb.getLastSentMessageFromSender(message.threadId, thisUsersSessionId)
+        val lastSentMessageId = ConversationActivityV2.lastSentMessageId;
         val isLastSentMessage = lastSentMessageId == message.id
 
         // ----- Case ii.) Message is outgoing but NOT scheduled to disappear -----

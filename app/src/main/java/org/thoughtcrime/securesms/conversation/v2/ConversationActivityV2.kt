@@ -298,6 +298,13 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
     private val reverseMessageList = false
 
     private val adapter by lazy {
+
+        // To prevent repeated attachment download jobs being spawned for any that fail we'll keep
+        // track of the attachment Ids we've attempted to download. Without this guard mechanism
+        // then when the retry limit for a failed job is reached another job is immediately spawned
+        // to download the same attachment (endlessly).
+        val alreadyAttemptedAttachmentDownloads = mutableSetOf<Long>()
+
         val cursor = mmsSmsDb.getConversation(viewModel.threadId, reverseMessageList)
         val adapter = ConversationAdapter(
             this,
@@ -325,9 +332,14 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                 }
             },
             onAttachmentNeedsDownload = { attachmentId, mmsId ->
-                // Start download (on IO thread)
-                lifecycleScope.launch(Dispatchers.IO) {
-                    JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
+
+                alreadyAttemptedAttachmentDownloads.takeUnless {
+                    attachmentId in alreadyAttemptedAttachmentDownloads
+                }.let {
+                    alreadyAttemptedAttachmentDownloads += attachmentId
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        JobQueue.shared.add(AttachmentDownloadJob(attachmentId, mmsId))
+                    }
                 }
             },
             glide = glide,
@@ -335,8 +347,8 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         )
         adapter.visibleMessageViewDelegate = this
 
-        // Register an AdapterDataObserver to scroll us to the bottom of the RecyclerView if we're
-        // already near the the bottom and the data changes.
+        // Register an AdapterDataObserver to scroll us to the bottom of the RecyclerView for if
+        // we're already near the the bottom and the data changes.
         adapter.registerAdapterDataObserver(ConversationAdapterDataObserver(binding?.conversationRecyclerView!!, adapter))
 
         adapter
@@ -375,6 +387,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         const val PICK_FROM_LIBRARY = 12
         const val INVITE_CONTACTS = 124
 
+        var lastSentMessageId = -1L;
     }
     // endregion
 
@@ -501,6 +514,9 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         viewModel.run {
             binding?.toolbarContent?.update(recipient ?: return, openGroup, expirationConfiguration)
         }
+
+        // Update our last sent message Id on startup / resume (resume is called after onCreate)
+        lastSentMessageId = mmsSmsDb.getLastOutgoingMessage(viewModel.threadId)
     }
 
     override fun onPause() {
@@ -2209,6 +2225,12 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                 // to the bottom of long messages as required by Jira SES-789 / GitHub 1364).
                 recyclerView.scrollToPosition(adapter.itemCount)
             }
+
+            // Update our cached last sent message to ensure we have accurate details.
+            // Note: This `onChanged` method is not triggered when scrolling so should minimally
+            // affect performance.
+            lastSentMessageId = mmsSmsDb.getLastOutgoingMessage(viewModel.threadId)
+
         }
     }
 

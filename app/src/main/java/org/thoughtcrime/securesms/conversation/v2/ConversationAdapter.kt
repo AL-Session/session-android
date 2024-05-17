@@ -59,7 +59,6 @@ class ConversationAdapter(
     private val contactCache = SparseArray<Contact>(100)
     private val contactLoadedCache = SparseBooleanArray(100)
     private val lastSeen = AtomicLong(originalLastSeen)
-    private var lastSentMessageId: Long = -1L
 
     init {
         lifecycleCoroutineScope.launch(IO) {
@@ -139,8 +138,7 @@ class ConversationAdapter(
                         senderId,
                         lastSeen.get(),
                         visibleMessageViewDelegate,
-                        onAttachmentNeedsDownload,
-                        lastSentMessageId
+                        onAttachmentNeedsDownload
                 )
 
                 if (!message.isDeleted) {
@@ -215,10 +213,7 @@ class ConversationAdapter(
         val cursorHasContent = cursor.moveToFirst()
         if (cursorHasContent) {
             val thisThreadId = cursor.getLong(4) // Column index 4 is "thread_id"
-            if (thisThreadId != -1L) {
-                val thisUsersSessionId = TextSecurePreferences.getLocalNumber(context)
-                return messageDB.getLastSentMessageFromSender(thisThreadId, thisUsersSessionId)
-            }
+            if (thisThreadId != -1L) return messageDB.getLastOutgoingMessage(thisThreadId)
         }
         return -1L
     }
@@ -243,11 +238,6 @@ class ConversationAdapter(
         toDeselect.iterator().forEach { (pos, record) ->
             onDeselect(record, pos)
         }
-
-        // This value gets updated here ONLY when the cursor changes, and the value is then passed
-        // through to `VisibleMessageView.bind` each time we bind via `onBindItemViewHolder`, above.
-        // If there are no messages then lastSentMessageId is assigned the value -1L.
-        if (cursor != null) { lastSentMessageId = getLastSentMessageId(cursor) }
     }
 
     fun findLastSeenItemPosition(lastSeenTimestamp: Long): Int? {
