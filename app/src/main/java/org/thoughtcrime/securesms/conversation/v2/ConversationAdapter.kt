@@ -60,8 +60,6 @@ class ConversationAdapter(
     private val contactLoadedCache = SparseBooleanArray(100)
     private val lastSeen = AtomicLong(originalLastSeen)
 
-    //private var lastSentMessageId: Long = -1L
-
     init {
         lifecycleCoroutineScope.launch(IO) {
             while (isActive) {

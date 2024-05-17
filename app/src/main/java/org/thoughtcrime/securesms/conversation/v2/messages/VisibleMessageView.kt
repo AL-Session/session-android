@@ -302,7 +302,6 @@ class VisibleMessageView : LinearLayout {
 
         // --- If we got here then we know the message is outgoing ---
 
-        //val lastSentMessageId = mmsSmsDb.getLastOutgoingMessage(message.threadId)
         val lastSentMessageId = ConversationActivityV2.lastSentMessageId;
         val isLastSentMessage = lastSentMessageId == message.id
 
