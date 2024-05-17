@@ -372,6 +372,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
     private var currentLastVisibleRecyclerViewIndex:  Int = RecyclerView.NO_POSITION
     private var recyclerScrollState: Int = RecyclerView.SCROLL_STATE_IDLE
 
+
     // region Settings
     companion object {
         // Extras
@@ -387,6 +388,7 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         const val PICK_FROM_LIBRARY = 12
         const val INVITE_CONTACTS = 124
 
+        var lastSentMessageId = -1L;
     }
     // endregion
 
@@ -513,6 +515,9 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
         viewModel.run {
             binding?.toolbarContent?.update(recipient ?: return, openGroup, expirationConfiguration)
         }
+
+        // Update our last sent message Id on startup / resume (resume is called after onCreate)
+        lastSentMessageId = mmsSmsDb.getLastOutgoingMessage(viewModel.threadId)
     }
 
     override fun onPause() {
@@ -2221,6 +2226,11 @@ class ConversationActivityV2 : PassphraseRequiredActionBarActivity(), InputBarDe
                 // to the bottom of long messages as required by Jira SES-789 / GitHub 1364).
                 recyclerView.scrollToPosition(adapter.itemCount)
             }
+
+            // Update our cached last sent message to ensure we have accurate details.
+            // Note: This `onChanged` method is not triggered when scrolling so should minimally
+            // affect performance.
+            lastSentMessageId = mmsSmsDb.getLastOutgoingMessage(viewModel.threadId)
         }
     }
 

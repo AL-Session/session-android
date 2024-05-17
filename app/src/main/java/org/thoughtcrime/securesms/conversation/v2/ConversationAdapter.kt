@@ -59,7 +59,8 @@ class ConversationAdapter(
     private val contactCache = SparseArray<Contact>(100)
     private val contactLoadedCache = SparseBooleanArray(100)
     private val lastSeen = AtomicLong(originalLastSeen)
-    private var lastSentMessageId: Long = -1L
+
+    //private var lastSentMessageId: Long = -1L
 
     init {
         lifecycleCoroutineScope.launch(IO) {
@@ -241,11 +242,6 @@ class ConversationAdapter(
         toDeselect.iterator().forEach { (pos, record) ->
             onDeselect(record, pos)
         }
-
-        // This value gets updated here ONLY when the cursor changes, and the value is then passed
-        // through to `VisibleMessageView.bind` each time we bind via `onBindItemViewHolder`, above.
-        // If there are no messages then lastSentMessageId is assigned the value -1L.
-        if (cursor != null) { lastSentMessageId = getLastSentMessageId(cursor) }
     }
 
     fun findLastSeenItemPosition(lastSeenTimestamp: Long): Int? {
