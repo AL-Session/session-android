@@ -1,12 +1,15 @@
 package org.session.libsession.utilities
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.hardware.Camera
 import android.net.Uri
 import android.provider.Settings
 import androidx.annotation.ArrayRes
 import androidx.annotation.StyleRes
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager.getDefaultSharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.BufferOverflow
@@ -947,7 +950,9 @@ interface TextSecurePreferences {
 
         @JvmStatic
         fun isCallNotificationsEnabled(context: Context): Boolean {
-            return getBooleanPreference(context, CALL_NOTIFICATIONS_ENABLED, false)
+            // Only allow calls if we have been asked to AND we currently have the microphone permission
+            val haveMicrophonePerm = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+            return getBooleanPreference(context, CALL_NOTIFICATIONS_ENABLED, false) && haveMicrophonePerm
         }
 
         @JvmStatic

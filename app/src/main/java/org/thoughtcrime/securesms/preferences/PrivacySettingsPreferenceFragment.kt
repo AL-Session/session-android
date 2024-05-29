@@ -1,12 +1,15 @@
 package org.thoughtcrime.securesms.preferences
 
+import android.Manifest
 import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import androidx.core.content.ContextCompat
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceDataStore
@@ -37,8 +40,28 @@ class PrivacySettingsPreferenceFragment : ListSummaryPreferenceFragment() {
             .onPreferenceChangeListener = ScreenLockListener()
         findPreference<Preference>(TextSecurePreferences.TYPING_INDICATORS)!!
             .onPreferenceChangeListener = TypingIndicatorsToggleListener()
+
+        // Voice and Video Calls permissions are a special case because on Android API 30+ the
+        // RECORD_AUDIO permission can be granted "Only this time" - in which case on reboot / cold
+        // boot of a device our saved preference value will be true, but we may actually NOT have
+        // the RECORD_AUDIO permission any longer - which can cause crashes.
         findPreference<Preference>(TextSecurePreferences.CALL_NOTIFICATIONS_ENABLED)!!
-            .onPreferenceChangeListener = CallToggleListener(this) { setCall(it) }
+            .onPreferenceChangeListener = CallToggleListener(this) {
+                // This gets called each time the user changes the checked/unchecked state, and will
+                // only accept checking the box if we have the RECORD_AUDIO permission.
+                setVoiceAndVideoCallEnabledState(it)
+            }
+
+        // This runs on startup of the privacy activity and will force the checked state of "Voice
+        // and Video Calls" to be off regardless of its saved state if we lack the necessary
+        // permissions to use the feature, such as if they allowed us to RECORD_AUDIO "This time
+        // only". In such a case the user will be prompted to re-enable Voice and Video Calls again
+        // the next time they attempt to make a voice or video call.
+        val haveMicrophonePerm = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (!haveMicrophonePerm) {
+            (findPreference<Preference>(TextSecurePreferences.CALL_NOTIFICATIONS_ENABLED) as SwitchPreferenceCompat?)!!.isChecked = false
+        }
+
         findPreference<PreferenceCategory>(getString(R.string.preferences__message_requests_category))?.let { category ->
             when (val user = configFactory.user) {
                 null -> category.isVisible = false
@@ -69,11 +92,16 @@ class PrivacySettingsPreferenceFragment : ListSummaryPreferenceFragment() {
         initializeVisibility()
     }
 
-    private fun setCall(isEnabled: Boolean) {
-        (findPreference<Preference>(TextSecurePreferences.CALL_NOTIFICATIONS_ENABLED) as SwitchPreferenceCompat?)!!.isChecked =
-            isEnabled
-        if (isEnabled && !areNotificationsEnabled(requireActivity())) {
-            // show a dialog saying that calls won't work properly if you don't have notifications on at a system level
+    private fun setVoiceAndVideoCallEnabledState(isEnabled: Boolean) {
+        // Live check of whether we currently have the RECORD_AUDIO permission
+        val haveMicPerm = ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+        // Only check the box if asked to AND we have the requisite permissions
+        val enabledAndHaveMicPerm = isEnabled && haveMicPerm
+        (findPreference<Preference>(TextSecurePreferences.CALL_NOTIFICATIONS_ENABLED) as SwitchPreferenceCompat?)!!.isChecked = enabledAndHaveMicPerm
+
+        // Warn if turning on voice & video calls but notifications are disabled
+        if (enabledAndHaveMicPerm && !areNotificationsEnabled(requireActivity())) {
             showSessionDialog {
                 title(R.string.CallNotificationBuilder_system_notification_title)
                 text(R.string.CallNotificationBuilder_system_notification_message)
@@ -90,7 +118,9 @@ class PrivacySettingsPreferenceFragment : ListSummaryPreferenceFragment() {
                         startActivity(it)
                     }
                 }
-                button(R.string.dismiss)
+                button(R.string.dismiss) {
+                    (findPreference<Preference>(TextSecurePreferences.CALL_NOTIFICATIONS_ENABLED) as SwitchPreferenceCompat?)!!.isChecked = false
+                }
             }
         }
     }
