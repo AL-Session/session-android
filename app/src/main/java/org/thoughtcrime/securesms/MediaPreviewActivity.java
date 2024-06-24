@@ -17,6 +17,8 @@
 package org.thoughtcrime.securesms;
 
 import static org.session.util.StringSubstitutionConstants.APP_NAME_KEY;
+import static org.session.util.StringSubstitutionConstants.DATE_TIME_KEY;
+import static org.session.util.StringSubstitutionConstants.NAME_KEY;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -249,11 +251,28 @@ public class MediaPreviewActivity extends PassphraseRequiredActionBarActivity im
         relativeTimeSpan = getString(R.string.draft);
       }
 
-      if      (mediaItem.outgoing)          getSupportActionBar().setTitle(getString(R.string.you));
-      else if (mediaItem.recipient != null) getSupportActionBar().setTitle(mediaItem.recipient.toShortString());
-      else                                  getSupportActionBar().setTitle("");
+      // Get a string for the sender..
+      String sender = "";
+      if (mediaItem.outgoing) sender = getString(R.string.you);
+      else if (mediaItem.recipient != null) sender = mediaItem.recipient.toShortString();
+      else {
+        Log.w(TAG, "Somehow got a media attachment that wasn't from us and doesn't have a sender");
+        sender = getString(R.string.unknown);
+      }
 
-      getSupportActionBar().setSubtitle(relativeTimeSpan);
+      // ..then peform the sender name substitution along with the relative timespan..
+      String actionBarTitleTxt = Phrase.from(getApplicationContext(), R.string.attachmentsMedia)
+              .put(NAME_KEY, sender)
+              .put(DATE_TIME_KEY, relativeTimeSpan)
+              .format().toString();
+
+      // ..and set it as the ActionBar's subtitle. The result will look like "AL on May 20th, 10:30am" etc.
+      // Note: If we set it to the ActionBar TITLE then the font is too big and it gets cut off. Also,
+      // the default title is "Session" to we have to remove that now we're using the subtitle rather
+      // than the title.
+      ActionBar ab = getSupportActionBar();
+      ab.setTitle("");
+      ab.setSubtitle(actionBarTitleTxt);
     }
   }
 
@@ -411,7 +430,6 @@ public class MediaPreviewActivity extends PassphraseRequiredActionBarActivity im
   @SuppressWarnings("CodeBlock2Expr")
   @SuppressLint("InlinedApi")
   private void saveToDisk() {
-    Log.w("ACL", "Asked to save to disk!");
     MediaItem mediaItem = getCurrentMediaItem();
     if (mediaItem == null) return;
 
