@@ -1,5 +1,8 @@
 package org.thoughtcrime.securesms.conversation.v2
 
+// ACL REMOVE
+//import org.thoughtcrime.securesms.util.DateUtils
+
 import android.animation.Animator
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
@@ -45,7 +48,7 @@ import org.thoughtcrime.securesms.database.model.ReactionRecord
 import org.thoughtcrime.securesms.dependencies.DatabaseComponent.Companion.get
 import org.thoughtcrime.securesms.repository.ConversationRepository
 import org.thoughtcrime.securesms.util.AnimationCompleteListener
-import org.thoughtcrime.securesms.util.DateUtils
+import org.thoughtcrime.securesms.util.DateUtil
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.time.Duration
@@ -55,8 +58,11 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
+
 @AndroidEntryPoint
 class ConversationReactionOverlay : FrameLayout {
+
+
     private val emojiViewGlobalRect = Rect()
     private val emojiStripViewBounds = Rect()
     private var segmentSize = 0f
@@ -97,6 +103,8 @@ class ConversationReactionOverlay : FrameLayout {
 
     @Inject lateinit var mmsSmsDatabase: MmsSmsDatabase
     @Inject lateinit var repository: ConversationRepository
+    @Inject lateinit var dateUtil: DateUtil
+
     private val scope = CoroutineScope(Dispatchers.Default)
     private var job: Job? = null
 
@@ -141,7 +149,12 @@ class ConversationReactionOverlay : FrameLayout {
         val conversationItemSnapshot = selectedConversationModel.bitmap
         conversationBubble.layoutParams = LinearLayout.LayoutParams(conversationItemSnapshot.width, conversationItemSnapshot.height)
         conversationBubble.background = BitmapDrawable(resources, conversationItemSnapshot)
-        conversationTimestamp.text = DateUtils.getDisplayFormattedTimeSpanString(context, Locale.getDefault(), messageRecord.timestamp)
+
+        // ACL REMOVE
+        //conversationTimestamp.text = DateUtils.getDisplayFormattedTimeSpanString(context, Locale.getDefault(), messageRecord.timestamp)
+        conversationTimestamp.text = dateUtil.format(messageRecord.getTimestamp());
+
+         Last thing completed was this class in the 1189 PR
         updateConversationTimestamp(messageRecord)
         val isMessageOnLeft = selectedConversationModel.isOutgoing xor ViewUtil.isLtr(this)
         conversationItem.scaleX = LONG_PRESS_SCALE_FACTOR
