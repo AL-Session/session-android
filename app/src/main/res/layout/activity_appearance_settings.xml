@@ -5,7 +5,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent" >
 
     <LinearLayout
         android:orientation="vertical"
@@ -347,6 +347,24 @@
                     android:layout_height="wrap_content"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
+
+        <!-- ACL NEW! -->
+
+
+        <TextView
+            android:textColor="?android:textColorTertiary"
+            android:textSize="@dimen/medium_font_size"
+            android:paddingHorizontal="@dimen/large_spacing"
+            android:paddingVertical="@dimen/small_spacing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Time and date format ACL CHANGE 2 STRING" />
+
+        <org.thoughtcrime.securesms.preferences.widgets.SignalPreference
+            android:key="date_format"
+            android:title="Date ACL CHANGE 2 STR"
+            android:persistent="false"
+            android:defaultValue="content://settings/system/notification_sound" />
 
     </LinearLayout>
 </ScrollView>

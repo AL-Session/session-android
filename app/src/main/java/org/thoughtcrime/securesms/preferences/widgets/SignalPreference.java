@@ -1,6 +1,5 @@
 package org.thoughtcrime.securesms.preferences.widgets;
 
-
 import android.content.Context;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceViewHolder;
